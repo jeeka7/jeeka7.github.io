@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Blaster</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            touch-action: none; /* Prevents browser scrolling while playing */
+        }
+        canvas {
+            background-color: #000;
+            border: 2px solid #333;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            /* Make canvas fit on small screens */
+            max-width: 100%;
+            max-height: 70vh; 
+        }
+        /* Mobile Controls Styling */
+        #controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 600px;
+            justify-content: center;
+        }
+        .btn {
+            background: #333;
+            border: 2px solid #555;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 20px;
+            user-select: none; /* Prevents text selection */
+            flex: 1; /* Make buttons equal width */
+            text-align: center;
+            touch-action: manipulation;
+        }
+        .btn:active {
+            background: #555;
+            border-color: #777;
+        }
+        .shoot-btn {
+            background: #4a1c1c;
+            border-color: #ff0055;
+            flex: 1.5; /* Make shoot button slightly larger */
+        }
+        .shoot-btn:active {
+            background: #ff0055;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="600" height="800"></canvas>
+    
+    <div id="controls">
+        <div class="btn" id="btnLeft">⬅️</div>
+        <div class="btn shoot-btn" id="btnShoot">🔫 / 🔄</div>
+        <div class="btn" id="btnRight">➡️</div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
