@@ -14,26 +14,26 @@
 </head>
 <body>
 
-<script src="https://unpkg.com/kaplay@3000.1.17/dist/kaplay.js"></script>
+<script src="https://unpkg.com/kaplay@3001.0.19/dist/kaplay.js"></script>
 
 <script>
     // 1. Initialize Kaplay
     kaplay({
-        background: [135, 206, 235], // Sky Blue background
+        background: [135, 206, 235], // Sky Blue
     });
 
-    // 2. Load Assets (Kaplay has a built-in "bean" character!)
+    // 2. Load the "Bean" sprite (built-in test character)
     loadBean(); 
 
     // 3. Define the Game Scene
     scene("game", () => {
         
-        // Add Player
+        // Add Player (Bean)
         const bean = add([
             sprite("bean"),
             pos(80, 40),
-            area(), // Generates collision box
-            body(), // Adds Gravity
+            area(), // Hitbox
+            body(), // Gravity
         ]);
 
         // Add Ground
@@ -42,25 +42,20 @@
             pos(0, height() - 48),
             outline(4),
             area(),
-            body({ isStatic: true }), // Static = doesn't fall
+            body({ isStatic: true }),
             color(127, 200, 100),
         ]);
 
-        // Jump Control
+        // Controls
         onKeyPress("space", () => {
-            if (bean.isGrounded()) {
-                bean.jump(800);
-            }
+            if (bean.isGrounded()) bean.jump(800);
         });
         
-        // Mobile Touch Control
         onTouchStart(() => {
-            if (bean.isGrounded()) {
-                bean.jump(800);
-            }
+            if (bean.isGrounded()) bean.jump(800);
         });
 
-        // Spawn Trees (Obstacles)
+        // Spawn Trees
         loop(1.5, () => {
             add([
                 rect(48, rand(24, 64)),
@@ -69,33 +64,32 @@
                 pos(width(), height() - 48),
                 anchor("botleft"),
                 color(255, 180, 255),
-                move(LEFT, 480), // Move left automatically
-                "tree", // Tag this object as "tree"
+                move(LEFT, 480),
+                "tree",
             ]);
         });
 
-        // Collision Logic
+        // Collision
         bean.onCollide("tree", () => {
             addKaboom(bean.pos);
             shake();
-            go("lose", score); // Switch to "lose" scene
+            go("lose", score);
         });
 
-        // Score Counter
+        // Score
         let score = 0;
         const scoreLabel = add([
             text(score),
             pos(24, 24),
         ]);
 
-        // Increase score every frame
         onUpdate(() => {
             score++;
             scoreLabel.text = score;
         });
     });
 
-    // 4. Define the Game Over Scene
+    // 4. Game Over Scene
     scene("lose", (score) => {
         add([
             text("Game Over"),
@@ -114,7 +108,7 @@
         onTouchStart(() => go("game"));
     });
 
-    // Start the game!
+    // Start
     go("game");
 </script>
 
