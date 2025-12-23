@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean Jump</title>
+    
+    <meta name="monetag" content="e843e7f5a6594ee646896681634a4208" />
+
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+<script src="https://unpkg.com/kaplay@3000.1.17/dist/kaplay.js"></script>
+
+<script>
+    // 1. Initialize Kaplay
+    kaplay({
+        background: [135, 206, 235], // Sky Blue background
+    });
+
+    // 2. Load Assets (Kaplay has a built-in "bean" character!)
+    loadBean(); 
+
+    // 3. Define the Game Scene
+    scene("game", () => {
+        
+        // Add Player
+        const bean = add([
+            sprite("bean"),
+            pos(80, 40),
+            area(), // Generates collision box
+            body(), // Adds Gravity
+        ]);
+
+        // Add Ground
+        add([
+            rect(width(), 48),
+            pos(0, height() - 48),
+            outline(4),
+            area(),
+            body({ isStatic: true }), // Static = doesn't fall
+            color(127, 200, 100),
+        ]);
+
+        // Jump Control
+        onKeyPress("space", () => {
+            if (bean.isGrounded()) {
+                bean.jump(800);
+            }
+        });
+        
+        // Mobile Touch Control
+        onTouchStart(() => {
+            if (bean.isGrounded()) {
+                bean.jump(800);
+            }
+        });
+
+        // Spawn Trees (Obstacles)
+        loop(1.5, () => {
+            add([
+                rect(48, rand(24, 64)),
+                area(),
+                outline(4),
+                pos(width(), height() - 48),
+                anchor("botleft"),
+                color(255, 180, 255),
+                move(LEFT, 480), // Move left automatically
+                "tree", // Tag this object as "tree"
+            ]);
+        });
+
+        // Collision Logic
+        bean.onCollide("tree", () => {
+            addKaboom(bean.pos);
+            shake();
+            go("lose", score); // Switch to "lose" scene
+        });
+
+        // Score Counter
+        let score = 0;
+        const scoreLabel = add([
+            text(score),
+            pos(24, 24),
+        ]);
+
+        // Increase score every frame
+        onUpdate(() => {
+            score++;
+            scoreLabel.text = score;
+        });
+    });
+
+    // 4. Define the Game Over Scene
+    scene("lose", (score) => {
+        add([
+            text("Game Over"),
+            pos(center()),
+            anchor("center"),
+        ]);
+        
+        add([
+            text(score),
+            pos(center().x, center().y + 80),
+            anchor("center"),
+            scale(2),
+        ]);
+
+        onKeyPress("space", () => go("game"));
+        onTouchStart(() => go("game"));
+    });
+
+    // Start the game!
+    go("game");
+</script>
+
+</body>
+</html>
