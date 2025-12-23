@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bean Jump</title>
-    
     <meta name="monetag" content="e843e7f5a6594ee646896681634a4208" />
-
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
         canvas { display: block; }
@@ -14,29 +12,26 @@
 </head>
 <body>
 
-<script src="https://unpkg.com/kaplay@3001.0.19/dist/kaplay.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/kaplay@3001.0.0-alpha.20/dist/kaplay.js"></script>
 
 <script>
     // 1. Initialize Kaplay
     kaplay({
-        background: [135, 206, 235], // Sky Blue
+        background: [135, 206, 235],
     });
 
-    // 2. Load the "Bean" sprite (built-in test character)
+    // 2. Load Assets
     loadBean(); 
 
-    // 3. Define the Game Scene
+    // 3. Define Game Scene
     scene("game", () => {
-        
-        // Add Player (Bean)
         const bean = add([
             sprite("bean"),
             pos(80, 40),
-            area(), // Hitbox
-            body(), // Gravity
+            area(),
+            body(),
         ]);
 
-        // Add Ground
         add([
             rect(width(), 48),
             pos(0, height() - 48),
@@ -46,16 +41,15 @@
             color(127, 200, 100),
         ]);
 
-        // Controls
-        onKeyPress("space", () => {
-            if (bean.isGrounded()) bean.jump(800);
-        });
-        
-        onTouchStart(() => {
-            if (bean.isGrounded()) bean.jump(800);
-        });
+        function jump() {
+            if (bean.isGrounded()) {
+                bean.jump(800);
+            }
+        }
 
-        // Spawn Trees
+        onKeyPress("space", jump);
+        onTouchStart(jump);
+
         loop(1.5, () => {
             add([
                 rect(48, rand(24, 64)),
@@ -69,14 +63,12 @@
             ]);
         });
 
-        // Collision
         bean.onCollide("tree", () => {
             addKaboom(bean.pos);
             shake();
             go("lose", score);
         });
 
-        // Score
         let score = 0;
         const scoreLabel = add([
             text(score),
@@ -89,28 +81,23 @@
         });
     });
 
-    // 4. Game Over Scene
     scene("lose", (score) => {
         add([
             text("Game Over"),
             pos(center()),
             anchor("center"),
         ]);
-        
         add([
             text(score),
             pos(center().x, center().y + 80),
             anchor("center"),
             scale(2),
         ]);
-
         onKeyPress("space", () => go("game"));
         onTouchStart(() => go("game"));
     });
 
-    // Start
     go("game");
 </script>
-
 </body>
 </html>
