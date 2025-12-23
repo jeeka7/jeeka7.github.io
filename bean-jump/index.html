@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bean Jump</title>
+    <title>Bean Jump - High Score Edition</title>
     <meta name="monetag" content="e843e7f5a6594ee646896681634a4208" />
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
@@ -15,30 +15,37 @@
 <script src="https://cdn.jsdelivr.net/npm/kaplay@3001.0.0-alpha.20/dist/kaplay.js"></script>
 
 <script>
-    // 1. Initialize
     kaplay({
-        background: [135, 206, 235], // Sky Blue
+        background: [135, 206, 235],
+        touchToMouse: true, 
     });
 
-    // --- THE FIX IS HERE ---
-    setGravity(2400); // Turns on gravity! (Higher number = faster fall)
-    // -----------------------
-
-    // 2. Load Assets
+    setGravity(2400);
     loadBean(); 
 
-    // 3. Define Game Scene
+    // SAVE SYSTEM
+    function saveHighScore(score) {
+        const currentHigh = getData("highScore", 0);
+        if (score > currentHigh) {
+            setData("highScore", score);
+            return true; 
+        }
+        return false;
+    }
+
     scene("game", () => {
         
-        // Add Player
+        let currentSpeed = 480; 
+        let score = 0;
+        let highScore = getData("highScore", 0);
+
         const bean = add([
             sprite("bean"),
             pos(80, 40),
             area(),
-            body(), // Now this will actually react to gravity!
+            body(), 
         ]);
 
-        // Add Ground
         add([
             rect(width(), 48),
             pos(0, height() - 48),
@@ -48,28 +55,29 @@
             color(127, 200, 100),
         ]);
 
-        // Instructions
+        // Score Labels
+        const scoreLabel = add([
+            text("Score: 0"),
+            pos(24, 24),
+        ]);
+        
         add([
-            text("Press SPACE to Jump", { size: 24 }),
-            pos(center().x, center().y - 100),
-            anchor("center"),
+            text("Best: " + highScore),
+            pos(24, 60),
+            scale(0.6), 
             color(0, 0, 0),
-            opacity(0.5)
         ]);
 
-        // Jump Action
         function jump() {
-            // Only jump if we are touching the ground
             if (bean.isGrounded()) {
-                bean.jump(1000); // Power of the jump
+                bean.jump(1000);
             }
         }
 
         onKeyPress("space", jump);
-        onTouchStart(jump);
+        onMousePress(jump); 
 
-        // Spawn Obstacles
-        loop(1.5, () => {
+        function spawnTree() {
             add([
                 rect(48, rand(24, 64)),
                 area(),
@@ -77,46 +85,80 @@
                 pos(width(), height() - 48),
                 anchor("botleft"),
                 color(255, 180, 255),
-                move(LEFT, 480),
-                "tree", // Tag
+                move(LEFT, currentSpeed), 
+                "tree", 
+            ]);
+
+            let waitTime = map(currentSpeed, 480, 1000, 1.5, 0.7);
+            wait(rand(waitTime - 0.2, waitTime + 0.2), spawnTree);
+        }
+
+        spawnTree();
+
+        // --- 45 SECOND SPEED BOOST ---
+        loop(45, () => {
+            currentSpeed += 150; 
+            shake(10); 
+            
+            // FIXED: Added "opacity(1)" so lifespan doesn't crash
+            add([
+                text("SPEED UP!", { size: 64 }),
+                pos(center()),
+                anchor("center"),
+                color(255, 0, 0),
+                opacity(1), // <--- THIS WAS MISSING
+                lifespan(2, { fade: 0.5 }), 
             ]);
         });
 
-        // Collision Logic
         bean.onCollide("tree", () => {
             addKaboom(bean.pos);
             shake();
             go("lose", score);
         });
 
-        // Score
-        let score = 0;
-        const scoreLabel = add([
-            text(score),
-            pos(24, 24),
-        ]);
-
         onUpdate(() => {
             score++;
-            scoreLabel.text = score;
+            scoreLabel.text = "Score: " + score;
         });
     });
 
-    // Game Over Scene
     scene("lose", (score) => {
+        const isNewRecord = saveHighScore(score);
+        const bestScore = getData("highScore", 0);
+
         add([
-            text("Game Over"),
-            pos(center()),
+            text("GAME OVER"),
+            pos(center().x, center().y - 100),
             anchor("center"),
+            color(0, 0, 0),
         ]);
+
         add([
-            text(score),
+            text("Score: " + score),
+            pos(center().x, center().y),
+            anchor("center"),
+            scale(1.5),
+            color(0, 0, 255),
+        ]);
+
+        add([
+            text(isNewRecord ? "NEW HIGH SCORE!" : "High Score: " + bestScore),
             pos(center().x, center().y + 80),
             anchor("center"),
-            scale(2),
+            color(isNewRecord ? rgb(255, 0, 0) : rgb(100, 100, 100)), 
         ]);
+
+        add([
+            text("Press SPACE to Restart"),
+            pos(center().x, height() - 100),
+            anchor("center"),
+            scale(0.8),
+            opacity(0.8) 
+        ]);
+
         onKeyPress("space", () => go("game"));
-        onTouchStart(() => go("game"));
+        onMousePress(() => go("game"));
     });
 
     go("game");
