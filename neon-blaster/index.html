@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Blaster - Level Up Edition</title>
+    <title>Neon Blaster - Easy Start</title>
     
     <meta name="monetag" content="e843e7f5a6594ee646896681634a4208" />
 
@@ -13,8 +13,8 @@
             background-color: #050505;
             color: white;
             font-family: 'Segoe UI', sans-serif;
-            overflow: hidden; /* Prevent scrolling */
-            touch-action: none; /* Better mobile control */
+            overflow: hidden;
+            touch-action: none;
         }
         
         #gameCanvas {
@@ -25,7 +25,6 @@
             border-right: 2px solid #333;
         }
 
-        /* UI OVERLAY */
         #ui-layer {
             position: absolute;
             top: 20px;
@@ -37,30 +36,20 @@
             justify-content: space-between;
             padding: 0 20px;
             box-sizing: border-box;
-            pointer-events: none; /* Let clicks pass through to game */
+            pointer-events: none;
         }
 
-        .stat-box {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px 20px;
-            border-radius: 10px;
-            border: 1px solid #444;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
-
+        .stat-box { font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
         #score-display { color: #00ffff; }
         #level-display { color: #ff0055; }
 
-        /* START / GAME OVER SCREEN */
         #menu-screen {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.9);
             padding: 40px;
             border-radius: 20px;
             border: 2px solid #00ffff;
@@ -88,45 +77,28 @@
             transition: transform 0.1s;
         }
         button:hover { transform: scale(1.05); background: #ff2277; }
-        
-        /* TOUCH CONTROLS (Mobile Only) */
-        .touch-zone {
-            position: absolute;
-            bottom: 20px;
-            width: 120px;
-            height: 120px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            display: none; /* Hidden on PC */
-        }
-        @media (hover: none) and (pointer: coarse) {
-            .touch-zone { display: block; }
-        }
     </style>
 </head>
 <body>
 
     <div id="ui-layer">
-        <div id="score-display">SCORE: 0</div>
-        <div id="level-display">LEVEL: 1</div>
+        <div id="score-display" class="stat-box">SCORE: 0</div>
+        <div id="level-display" class="stat-box">LEVEL: 1</div>
     </div>
 
     <div id="menu-screen">
         <h1>NEON BLASTER</h1>
-        <p id="final-score" style="display:none; color: #aaa;">SCORE: 0</p>
+        <p id="final-score" style="display:none; color: #aaa; margin-bottom: 20px;">SCORE: 0</p>
         <button onclick="startGame()">START GAME</button>
-        <p style="font-size: 0.8rem; color: #666; margin-top: 15px;">Use Arrow Keys or Slide to Move</p>
+        <p style="font-size: 0.9rem; color: #888; margin-top: 20px;">Use Arrows / Touch to Move</p>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        // --- CONFIGURATION ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        // Resize canvas to fit screen (Max width 600 for mobile feel)
         function resize() {
             canvas.width = Math.min(window.innerWidth, 600);
             canvas.height = window.innerHeight;
@@ -134,7 +106,7 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // --- GAME STATE ---
+        // --- GAME VARIABLES ---
         let gameRunning = false;
         let score = 0;
         let level = 1;
@@ -143,10 +115,10 @@
         let bullets = [];
         let enemies = [];
         
-        // DIFFICULTY VARIABLES
-        let enemySpeed = 2;       // Start VERY SLOW
-        let spawnRate = 120;      // Spawn every 120 frames (approx 2 seconds)
-        const LEVEL_THRESHOLD = 500; // Points needed to level up
+        // --- DIFFICULTY SETTINGS (EASY START) ---
+        let enemySpeed = 1.5;     // SLOWER (Was 2 or 3)
+        let spawnRate = 180;      // SLOWER: Spawn every 3 seconds (Was 120/2s)
+        const LEVEL_THRESHOLD = 500; 
 
         // PLAYER
         const player = {
@@ -154,38 +126,32 @@
             y: canvas.height - 100,
             width: 40,
             height: 40,
-            speed: 7,
+            speed: 9, // FASTER (Was 7) - Easier to dodge
             color: '#00ffff'
         };
 
-        // INPUT HANDLING
         let keys = {};
         window.addEventListener('keydown', e => keys[e.key] = true);
         window.addEventListener('keyup', e => keys[e.key] = false);
 
-        // Mobile Touch
-        let touchX = null;
         canvas.addEventListener('touchmove', e => {
-            e.preventDefault(); // Stop scrolling
+            e.preventDefault();
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
-            player.x = touch.clientX - rect.left;
+            player.x = touch.clientX - rect.left - (player.width/2);
         }, { passive: false });
 
-        // --- GAME FUNCTIONS ---
-
         function startGame() {
-            // Reset everything
             score = 0;
             level = 1;
-            enemySpeed = 2; // RESET SPEED TO EASY
-            spawnRate = 120; // RESET SPAWN TO SLOW
+            // RESET DIFFICULTY TO EASY MODE
+            enemySpeed = 1.5; 
+            spawnRate = 180; 
             
             enemies = [];
             bullets = [];
             particles = [];
             gameRunning = true;
-            
             document.getElementById('menu-screen').style.display = 'none';
             updateUI();
             gameLoop();
@@ -206,8 +172,8 @@
                 y: -50,
                 width: size,
                 height: size,
-                speed: enemySpeed + (Math.random() * 0.5), // Slight variance
-                hp: 1 + Math.floor(level / 3) // Enemies get tougher later
+                speed: enemySpeed + (Math.random() * 0.5), 
+                hp: 1 + Math.floor(level / 5) // HP only increases every 5 levels now
             });
         }
 
@@ -224,52 +190,44 @@
         }
 
         function checkLevelUp() {
-            // Check if we passed a threshold (e.g., 500, 1000, 1500)
             const newLevel = 1 + Math.floor(score / LEVEL_THRESHOLD);
-            
             if (newLevel > level) {
                 level = newLevel;
-                
-                // MAKE IT HARDER
-                enemySpeed += 0.5;   // Faster enemies
-                if(spawnRate > 30) spawnRate -= 10; // Faster spawns (limit at 30 frames)
-
-                // Visual Flair
+                // SLOWLY INCREASE DIFFICULTY
+                enemySpeed += 0.3;   // Tiny speed increase
+                if(spawnRate > 40) spawnRate -= 10; // Spawns get slightly faster
                 createLevelUpText();
             }
         }
         
         let levelTextAlpha = 0;
-        function createLevelUpText() {
-            levelTextAlpha = 1.0;
-        }
+        function createLevelUpText() { levelTextAlpha = 1.0; }
 
         function updateUI() {
             document.getElementById('score-display').innerText = "SCORE: " + score;
             document.getElementById('level-display').innerText = "LEVEL: " + level;
         }
 
-        // --- MAIN LOOP ---
         function gameLoop() {
             if (!gameRunning) return;
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. PLAYER MOVEMENT
+            // Player Move
             if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
             if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
-            if (keys[' '] && frames % 10 === 0) { // Auto fire if holding space
-                bullets.push({x: player.x + player.width/2 - 2, y: player.y, width: 4, height: 10, speed: 10});
+            
+            // Auto Fire
+            if (keys[' '] || frames % 15 === 0) { // Auto-fire every 15 frames
+                bullets.push({x: player.x + player.width/2 - 2, y: player.y, width: 4, height: 10, speed: 15});
             }
 
             // Draw Player
             ctx.fillStyle = player.color;
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = player.color;
+            ctx.shadowBlur = 20; ctx.shadowColor = player.color;
             ctx.fillRect(player.x, player.y, player.width, player.height);
-            ctx.shadowBlur = 0; // Reset shadow
+            ctx.shadowBlur = 0;
 
-            // 2. BULLETS
+            // Bullets
             ctx.fillStyle = '#ff0';
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
@@ -278,43 +236,33 @@
                 if (b.y < 0) bullets.splice(i, 1);
             }
 
-            // 3. ENEMIES
+            // Enemies
             if (frames % spawnRate === 0) spawnEnemy();
 
             ctx.fillStyle = '#ff0055';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#ff0055';
-            
+            ctx.shadowBlur = 10; ctx.shadowColor = '#ff0055';
             for (let i = enemies.length - 1; i >= 0; i--) {
                 let e = enemies[i];
                 e.y += e.speed;
                 ctx.fillRect(e.x, e.y, e.width, e.height);
 
-                // Collision: Player
-                if (
-                    player.x < e.x + e.width &&
-                    player.x + player.width > e.x &&
-                    player.y < e.y + e.height &&
-                    player.y + player.height > e.y
-                ) {
+                // Hit Player
+                if (player.x < e.x + e.width && player.x + player.width > e.x &&
+                    player.y < e.y + e.height && player.y + player.height > e.y) {
                     createExplosion(player.x, player.y, '#00ffff');
                     gameOver();
                 }
 
-                // Collision: Bullets
+                // Hit by Bullet
                 for (let j = bullets.length - 1; j >= 0; j--) {
                     let b = bullets[j];
-                    if (
-                        b.x < e.x + e.width &&
-                        b.x + b.width > e.x &&
-                        b.y < e.y + e.height &&
-                        b.y + b.height > e.y
-                    ) {
+                    if (b.x < e.x + e.width && b.x + b.width > e.x &&
+                        b.y < e.y + e.height && b.y + b.height > e.y) {
                         e.hp--;
-                        bullets.splice(j, 1); // Remove bullet
+                        bullets.splice(j, 1);
                         if (e.hp <= 0) {
                             createExplosion(e.x, e.y, '#ff0055');
-                            enemies.splice(i, 1); // Remove enemy
+                            enemies.splice(i, 1);
                             score += 50;
                             checkLevelUp();
                             updateUI();
@@ -322,21 +270,14 @@
                         break;
                     }
                 }
-
-                // Remove off-screen enemies
-                if (e.y > canvas.height) {
-                    enemies.splice(i, 1);
-                    // Optional: Penalize score? score -= 10;
-                }
+                if (e.y > canvas.height) enemies.splice(i, 1);
             }
             ctx.shadowBlur = 0;
 
-            // 4. PARTICLES (Explosions)
+            // Particles
             for (let i = particles.length - 1; i >= 0; i--) {
                 let p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life--;
+                p.x += p.vx; p.y += p.vy; p.life--;
                 ctx.fillStyle = p.color;
                 ctx.globalAlpha = p.life / 20;
                 ctx.fillRect(p.x, p.y, 4, 4);
@@ -344,7 +285,7 @@
             }
             ctx.globalAlpha = 1.0;
 
-            // 5. LEVEL UP TEXT ANIMATION
+            // Level Text
             if (levelTextAlpha > 0) {
                 ctx.fillStyle = `rgba(255, 255, 0, ${levelTextAlpha})`;
                 ctx.font = "bold 40px Arial";
