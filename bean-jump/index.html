@@ -15,23 +15,30 @@
 <script src="https://cdn.jsdelivr.net/npm/kaplay@3001.0.0-alpha.20/dist/kaplay.js"></script>
 
 <script>
-    // 1. Initialize Kaplay
+    // 1. Initialize
     kaplay({
-        background: [135, 206, 235],
+        background: [135, 206, 235], // Sky Blue
     });
+
+    // --- THE FIX IS HERE ---
+    setGravity(2400); // Turns on gravity! (Higher number = faster fall)
+    // -----------------------
 
     // 2. Load Assets
     loadBean(); 
 
     // 3. Define Game Scene
     scene("game", () => {
+        
+        // Add Player
         const bean = add([
             sprite("bean"),
             pos(80, 40),
             area(),
-            body(),
+            body(), // Now this will actually react to gravity!
         ]);
 
+        // Add Ground
         add([
             rect(width(), 48),
             pos(0, height() - 48),
@@ -41,15 +48,27 @@
             color(127, 200, 100),
         ]);
 
+        // Instructions
+        add([
+            text("Press SPACE to Jump", { size: 24 }),
+            pos(center().x, center().y - 100),
+            anchor("center"),
+            color(0, 0, 0),
+            opacity(0.5)
+        ]);
+
+        // Jump Action
         function jump() {
+            // Only jump if we are touching the ground
             if (bean.isGrounded()) {
-                bean.jump(800);
+                bean.jump(1000); // Power of the jump
             }
         }
 
         onKeyPress("space", jump);
         onTouchStart(jump);
 
+        // Spawn Obstacles
         loop(1.5, () => {
             add([
                 rect(48, rand(24, 64)),
@@ -59,16 +78,18 @@
                 anchor("botleft"),
                 color(255, 180, 255),
                 move(LEFT, 480),
-                "tree",
+                "tree", // Tag
             ]);
         });
 
+        // Collision Logic
         bean.onCollide("tree", () => {
             addKaboom(bean.pos);
             shake();
             go("lose", score);
         });
 
+        // Score
         let score = 0;
         const scoreLabel = add([
             text(score),
@@ -81,6 +102,7 @@
         });
     });
 
+    // Game Over Scene
     scene("lose", (score) => {
         add([
             text("Game Over"),
