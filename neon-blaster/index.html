@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Blaster - Easy Start</title>
+    <title>Neon Blaster v2.2 - Survival</title>
     
     <meta name="monetag" content="e843e7f5a6594ee646896681634a4208" />
 
@@ -42,6 +42,7 @@
         .stat-box { font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
         #score-display { color: #00ffff; }
         #level-display { color: #ff0055; }
+        #timer-display { color: #ffff00; font-size: 0.9rem; margin-top: 5px; }
 
         #menu-screen {
             position: absolute;
@@ -49,7 +50,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             padding: 40px;
             border-radius: 20px;
             border: 2px solid #00ffff;
@@ -58,12 +59,14 @@
         }
 
         h1 {
-            margin: 0 0 20px 0;
+            margin: 0 0 10px 0;
             font-size: 3rem;
             background: linear-gradient(to right, #00ffff, #ff0055);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+
+        .version-tag { color: #666; display: block; margin-bottom: 20px; letter-spacing: 2px; }
 
         button {
             background: #ff0055;
@@ -82,15 +85,21 @@
 <body>
 
     <div id="ui-layer">
-        <div id="score-display" class="stat-box">SCORE: 0</div>
-        <div id="level-display" class="stat-box">LEVEL: 1</div>
+        <div>
+            <div id="score-display" class="stat-box">SCORE: 0</div>
+        </div>
+        <div style="text-align: right;">
+            <div id="level-display" class="stat-box">LEVEL: 1</div>
+            <div id="timer-display">NEXT LEVEL: 45s</div>
+        </div>
     </div>
 
     <div id="menu-screen">
         <h1>NEON BLASTER</h1>
+        <span class="version-tag">VERSION 2.2</span>
         <p id="final-score" style="display:none; color: #aaa; margin-bottom: 20px;">SCORE: 0</p>
         <button onclick="startGame()">START GAME</button>
-        <p style="font-size: 0.9rem; color: #888; margin-top: 20px;">Use Arrows / Touch to Move</p>
+        <p style="font-size: 0.9rem; color: #888; margin-top: 20px;">Survive 45s to Level Up!</p>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -114,11 +123,20 @@
         let particles = [];
         let bullets = [];
         let enemies = [];
+        let powerups = [];
         
-        // --- DIFFICULTY SETTINGS (EASY START) ---
-        let enemySpeed = 1.5;     // SLOWER (Was 2 or 3)
-        let spawnRate = 180;      // SLOWER: Spawn every 3 seconds (Was 120/2s)
-        const LEVEL_THRESHOLD = 500; 
+        // TIME VARIABLES
+        let levelStartTime = 0;
+        const LEVEL_DURATION = 45000; // 45 Seconds in milliseconds
+        
+        // DIFFICULTY VARS
+        let enemySpeed = 1.2;     
+        let spawnRate = 150;      
+
+        // POWERUP VARS
+        let powerUpActive = false;
+        let powerUpEndTime = 0;
+        let lastPowerUpSpawn = 0;
 
         // PLAYER
         const player = {
@@ -126,7 +144,7 @@
             y: canvas.height - 100,
             width: 40,
             height: 40,
-            speed: 9, // FASTER (Was 7) - Easier to dodge
+            speed: 8, 
             color: '#00ffff'
         };
 
@@ -144,16 +162,20 @@
         function startGame() {
             score = 0;
             level = 1;
-            // RESET DIFFICULTY TO EASY MODE
-            enemySpeed = 1.5; 
-            spawnRate = 180; 
+            enemySpeed = 1.2; 
+            spawnRate = 150; 
             
             enemies = [];
             bullets = [];
             particles = [];
+            powerups = [];
+            powerUpActive = false;
+            
             gameRunning = true;
+            levelStartTime = Date.now(); // Start the timer
+            lastPowerUpSpawn = Date.now();
+
             document.getElementById('menu-screen').style.display = 'none';
-            updateUI();
             gameLoop();
         }
 
@@ -167,13 +189,28 @@
 
         function spawnEnemy() {
             const size = 30 + Math.random() * 20;
+            // HP increases every 5 levels
+            let enemyHP = 1 + Math.floor(level / 5);
+
             enemies.push({
                 x: Math.random() * (canvas.width - size),
                 y: -50,
                 width: size,
                 height: size,
                 speed: enemySpeed + (Math.random() * 0.5), 
-                hp: 1 + Math.floor(level / 5) // HP only increases every 5 levels now
+                hp: enemyHP
+            });
+        }
+
+        function spawnPowerUp() {
+            const size = 30;
+            powerups.push({
+                x: Math.random() * (canvas.width - size),
+                y: -50,
+                width: size,
+                height: size,
+                speed: 2,
+                type: 'TRIPLE'
             });
         }
 
@@ -189,36 +226,69 @@
             }
         }
 
-        function checkLevelUp() {
-            const newLevel = 1 + Math.floor(score / LEVEL_THRESHOLD);
-            if (newLevel > level) {
-                level = newLevel;
-                // SLOWLY INCREASE DIFFICULTY
-                enemySpeed += 0.3;   // Tiny speed increase
-                if(spawnRate > 40) spawnRate -= 10; // Spawns get slightly faster
+        function updateGameLogic() {
+            const now = Date.now();
+
+            // 1. TIME BASED LEVELING
+            const timePassed = now - levelStartTime;
+            const timeRemaining = Math.max(0, LEVEL_DURATION - timePassed);
+            
+            // Update Timer Display
+            document.getElementById('timer-display').innerText = "NEXT: " + Math.ceil(timeRemaining / 1000) + "s";
+
+            if (timePassed >= LEVEL_DURATION) {
+                // LEVEL UP!
+                level++;
+                levelStartTime = now; // Reset timer
                 createLevelUpText();
+                
+                // Increase Difficulty
+                enemySpeed += 0.3;
+                if (spawnRate > 30) spawnRate -= 10;
             }
+
+            // 2. POWERUP SPAWNING (More frequent as level goes up)
+            // Base time 15 seconds, minus 1 second per level. Minimum 5 seconds.
+            const powerUpInterval = Math.max(5000, 15000 - (level * 1000));
+            
+            if (now - lastPowerUpSpawn > powerUpInterval) {
+                spawnPowerUp();
+                lastPowerUpSpawn = now;
+            }
+
+            // 3. CHECK POWERUP STATUS
+            if (powerUpActive && now > powerUpEndTime) {
+                powerUpActive = false; // Expired
+                player.color = '#00ffff'; // Reset color
+            }
+
+            document.getElementById('score-display').innerText = "SCORE: " + score;
+            document.getElementById('level-display').innerText = "LEVEL: " + level;
         }
         
         let levelTextAlpha = 0;
         function createLevelUpText() { levelTextAlpha = 1.0; }
 
-        function updateUI() {
-            document.getElementById('score-display').innerText = "SCORE: " + score;
-            document.getElementById('level-display').innerText = "LEVEL: " + level;
-        }
-
         function gameLoop() {
             if (!gameRunning) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            updateGameLogic();
 
             // Player Move
             if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
             if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
             
-            // Auto Fire
-            if (keys[' '] || frames % 15 === 0) { // Auto-fire every 15 frames
-                bullets.push({x: player.x + player.width/2 - 2, y: player.y, width: 4, height: 10, speed: 15});
+            // --- SHOOTING ---
+            if (keys[' '] || frames % 10 === 0) { 
+                // Center Shot
+                bullets.push({x: player.x + player.width/2 - 2, y: player.y, width: 4, height: 10, speed: 12, vx: 0});
+                
+                // Triple Shot (If Powerup Active)
+                if (powerUpActive) {
+                    bullets.push({x: player.x, y: player.y + 10, width: 4, height: 10, speed: 10, vx: -2}); // Left Diagonal
+                    bullets.push({x: player.x + player.width, y: player.y + 10, width: 4, height: 10, speed: 10, vx: 2}); // Right Diagonal
+                }
             }
 
             // Draw Player
@@ -227,16 +297,46 @@
             ctx.fillRect(player.x, player.y, player.width, player.height);
             ctx.shadowBlur = 0;
 
-            // Bullets
+            // --- BULLETS ---
             ctx.fillStyle = '#ff0';
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
                 b.y -= b.speed;
+                if (b.vx) b.x += b.vx; // Diagonal movement
+                
                 ctx.fillRect(b.x, b.y, b.width, b.height);
                 if (b.y < 0) bullets.splice(i, 1);
             }
 
-            // Enemies
+            // --- POWERUPS ---
+            ctx.fillStyle = '#ffff00'; // Yellow
+            ctx.font = "20px Arial";
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                let p = powerups[i];
+                p.y += p.speed;
+                
+                // Draw Box
+                ctx.shadowBlur = 10; ctx.shadowColor = '#ffff00';
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(p.x, p.y, p.width, p.height);
+                ctx.fillText("⚡", p.x + 8, p.y + 22);
+                ctx.shadowBlur = 0;
+
+                // Collect Powerup
+                if (player.x < p.x + p.width && player.x + player.width > p.x &&
+                    player.y < p.y + p.height && player.y + player.height > p.y) {
+                    
+                    powerUpActive = true;
+                    powerUpEndTime = Date.now() + 5000; // 5 Seconds
+                    player.color = '#ffff00'; // Turn Player Yellow
+                    createExplosion(p.x, p.y, '#ffff00');
+                    powerups.splice(i, 1);
+                    score += 100;
+                }
+            }
+
+            // --- ENEMIES ---
             if (frames % spawnRate === 0) spawnEnemy();
 
             ctx.fillStyle = '#ff0055';
@@ -264,8 +364,6 @@
                             createExplosion(e.x, e.y, '#ff0055');
                             enemies.splice(i, 1);
                             score += 50;
-                            checkLevelUp();
-                            updateUI();
                         }
                         break;
                     }
