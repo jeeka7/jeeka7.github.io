@@ -3,77 +3,359 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Blaster</title>
+    <title>Neon Blaster - Level Up Edition</title>
+    
+    <meta name="monetag" content="e843e7f5a6594ee646896681634a4208" />
+
     <style>
         body {
-            background-color: #1a1a1a;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
             margin: 0;
+            background-color: #050505;
             color: white;
             font-family: 'Segoe UI', sans-serif;
-            touch-action: none; /* Prevents browser scrolling while playing */
+            overflow: hidden; /* Prevent scrolling */
+            touch-action: none; /* Better mobile control */
         }
-        canvas {
-            background-color: #000;
-            border: 2px solid #333;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
-            /* Make canvas fit on small screens */
-            max-width: 100%;
-            max-height: 70vh; 
+        
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
+            border-left: 2px solid #333;
+            border-right: 2px solid #333;
         }
-        /* Mobile Controls Styling */
-        #controls {
-            display: flex;
-            gap: 20px;
-            margin-top: 20px;
+
+        /* UI OVERLAY */
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             width: 100%;
             max-width: 600px;
-            justify-content: center;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            pointer-events: none; /* Let clicks pass through to game */
         }
-        .btn {
-            background: #333;
-            border: 2px solid #555;
-            color: white;
-            padding: 20px;
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
             border-radius: 10px;
-            font-size: 20px;
-            user-select: none; /* Prevents text selection */
-            flex: 1; /* Make buttons equal width */
+            border: 1px solid #444;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        #score-display { color: #00ffff; }
+        #level-display { color: #ff0055; }
+
+        /* START / GAME OVER SCREEN */
+        #menu-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             text-align: center;
-            touch-action: manipulation;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.2);
+            z-index: 10;
         }
-        .btn:active {
-            background: #555;
-            border-color: #777;
+
+        h1 {
+            margin: 0 0 20px 0;
+            font-size: 3rem;
+            background: linear-gradient(to right, #00ffff, #ff0055);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        .shoot-btn {
-            background: #4a1c1c;
-            border-color: #ff0055;
-            flex: 1.5; /* Make shoot button slightly larger */
-        }
-        .shoot-btn:active {
+
+        button {
             background: #ff0055;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+        button:hover { transform: scale(1.05); background: #ff2277; }
+        
+        /* TOUCH CONTROLS (Mobile Only) */
+        .touch-zone {
+            position: absolute;
+            bottom: 20px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            display: none; /* Hidden on PC */
+        }
+        @media (hover: none) and (pointer: coarse) {
+            .touch-zone { display: block; }
         }
     </style>
-    <meta name="monetag" content="e843e7f5a6594ee646896681634a4208">    
 </head>
-<script src="https://quge5.com/88/tag.min.js" data-zone="195319" async data-cfasync="false"></script>
-    
 <body>
-    <canvas id="gameCanvas" width="600" height="800"></canvas>
-    
-    <div id="controls">
-        <div class="btn" id="btnLeft">⬅️</div>
-        <div class="btn shoot-btn" id="btnShoot">🔫 / 🔄</div>
-        <div class="btn" id="btnRight">➡️</div>
+
+    <div id="ui-layer">
+        <div id="score-display">SCORE: 0</div>
+        <div id="level-display">LEVEL: 1</div>
     </div>
 
-    <script src="game.js"></script>
+    <div id="menu-screen">
+        <h1>NEON BLASTER</h1>
+        <p id="final-score" style="display:none; color: #aaa;">SCORE: 0</p>
+        <button onclick="startGame()">START GAME</button>
+        <p style="font-size: 0.8rem; color: #666; margin-top: 15px;">Use Arrow Keys or Slide to Move</p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // --- CONFIGURATION ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Resize canvas to fit screen (Max width 600 for mobile feel)
+        function resize() {
+            canvas.width = Math.min(window.innerWidth, 600);
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- GAME STATE ---
+        let gameRunning = false;
+        let score = 0;
+        let level = 1;
+        let frames = 0;
+        let particles = [];
+        let bullets = [];
+        let enemies = [];
+        
+        // DIFFICULTY VARIABLES
+        let enemySpeed = 2;       // Start VERY SLOW
+        let spawnRate = 120;      // Spawn every 120 frames (approx 2 seconds)
+        const LEVEL_THRESHOLD = 500; // Points needed to level up
+
+        // PLAYER
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            width: 40,
+            height: 40,
+            speed: 7,
+            color: '#00ffff'
+        };
+
+        // INPUT HANDLING
+        let keys = {};
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
+
+        // Mobile Touch
+        let touchX = null;
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault(); // Stop scrolling
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            player.x = touch.clientX - rect.left;
+        }, { passive: false });
+
+        // --- GAME FUNCTIONS ---
+
+        function startGame() {
+            // Reset everything
+            score = 0;
+            level = 1;
+            enemySpeed = 2; // RESET SPEED TO EASY
+            spawnRate = 120; // RESET SPAWN TO SLOW
+            
+            enemies = [];
+            bullets = [];
+            particles = [];
+            gameRunning = true;
+            
+            document.getElementById('menu-screen').style.display = 'none';
+            updateUI();
+            gameLoop();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('menu-screen').style.display = 'block';
+            document.getElementById('final-score').style.display = 'block';
+            document.getElementById('final-score').innerText = "FINAL SCORE: " + score;
+            document.querySelector('button').innerText = "TRY AGAIN";
+        }
+
+        function spawnEnemy() {
+            const size = 30 + Math.random() * 20;
+            enemies.push({
+                x: Math.random() * (canvas.width - size),
+                y: -50,
+                width: size,
+                height: size,
+                speed: enemySpeed + (Math.random() * 0.5), // Slight variance
+                hp: 1 + Math.floor(level / 3) // Enemies get tougher later
+            });
+        }
+
+        function createExplosion(x, y, color) {
+            for(let i=0; i<8; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 20,
+                    color: color
+                });
+            }
+        }
+
+        function checkLevelUp() {
+            // Check if we passed a threshold (e.g., 500, 1000, 1500)
+            const newLevel = 1 + Math.floor(score / LEVEL_THRESHOLD);
+            
+            if (newLevel > level) {
+                level = newLevel;
+                
+                // MAKE IT HARDER
+                enemySpeed += 0.5;   // Faster enemies
+                if(spawnRate > 30) spawnRate -= 10; // Faster spawns (limit at 30 frames)
+
+                // Visual Flair
+                createLevelUpText();
+            }
+        }
+        
+        let levelTextAlpha = 0;
+        function createLevelUpText() {
+            levelTextAlpha = 1.0;
+        }
+
+        function updateUI() {
+            document.getElementById('score-display').innerText = "SCORE: " + score;
+            document.getElementById('level-display').innerText = "LEVEL: " + level;
+        }
+
+        // --- MAIN LOOP ---
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. PLAYER MOVEMENT
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
+            if (keys[' '] && frames % 10 === 0) { // Auto fire if holding space
+                bullets.push({x: player.x + player.width/2 - 2, y: player.y, width: 4, height: 10, speed: 10});
+            }
+
+            // Draw Player
+            ctx.fillStyle = player.color;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.shadowBlur = 0; // Reset shadow
+
+            // 2. BULLETS
+            ctx.fillStyle = '#ff0';
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.y -= b.speed;
+                ctx.fillRect(b.x, b.y, b.width, b.height);
+                if (b.y < 0) bullets.splice(i, 1);
+            }
+
+            // 3. ENEMIES
+            if (frames % spawnRate === 0) spawnEnemy();
+
+            ctx.fillStyle = '#ff0055';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ff0055';
+            
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                e.y += e.speed;
+                ctx.fillRect(e.x, e.y, e.width, e.height);
+
+                // Collision: Player
+                if (
+                    player.x < e.x + e.width &&
+                    player.x + player.width > e.x &&
+                    player.y < e.y + e.height &&
+                    player.y + player.height > e.y
+                ) {
+                    createExplosion(player.x, player.y, '#00ffff');
+                    gameOver();
+                }
+
+                // Collision: Bullets
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    let b = bullets[j];
+                    if (
+                        b.x < e.x + e.width &&
+                        b.x + b.width > e.x &&
+                        b.y < e.y + e.height &&
+                        b.y + b.height > e.y
+                    ) {
+                        e.hp--;
+                        bullets.splice(j, 1); // Remove bullet
+                        if (e.hp <= 0) {
+                            createExplosion(e.x, e.y, '#ff0055');
+                            enemies.splice(i, 1); // Remove enemy
+                            score += 50;
+                            checkLevelUp();
+                            updateUI();
+                        }
+                        break;
+                    }
+                }
+
+                // Remove off-screen enemies
+                if (e.y > canvas.height) {
+                    enemies.splice(i, 1);
+                    // Optional: Penalize score? score -= 10;
+                }
+            }
+            ctx.shadowBlur = 0;
+
+            // 4. PARTICLES (Explosions)
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 20;
+                ctx.fillRect(p.x, p.y, 4, 4);
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+            ctx.globalAlpha = 1.0;
+
+            // 5. LEVEL UP TEXT ANIMATION
+            if (levelTextAlpha > 0) {
+                ctx.fillStyle = `rgba(255, 255, 0, ${levelTextAlpha})`;
+                ctx.font = "bold 40px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("LEVEL UP!", canvas.width/2, canvas.height/3);
+                levelTextAlpha -= 0.02;
+            }
+
+            frames++;
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
 </body>
-
 </html>
-
